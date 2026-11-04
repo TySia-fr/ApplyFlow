@@ -1,0 +1,12 @@
+import { sql } from "drizzle-orm";
+import { db } from "@/server/db";
+
+/** Liveness + DB readiness, for the deploy script and uptime checks. No secrets, no versions. */
+export async function GET() {
+  try {
+    await db.execute(sql`select 1`);
+    return Response.json({ status: "ok" }, { headers: { "Cache-Control": "no-store" } });
+  } catch {
+    return Response.json({ status: "degraded" }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
+}
