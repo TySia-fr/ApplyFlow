@@ -2,43 +2,23 @@
 
 Scope is a **deep MVP**: fewer modules, each finished to the definition of done
 (UI, backend, DB, validation, authorization, error states, tests, docs).
-Breadth comes after depth.
 
-## Phase 1 — Foundation ✅ in progress
-- Next.js 16 (App Router, Cache Components), TypeScript strict, Tailwind 4
-- Drizzle schema + first migration, verified against PostgreSQL 16
-- Environment validation (`src/server/env.ts`)
-- Architecture docs and ADRs
+| Phase | Content | Status |
+|---|---|---|
+| 1. Foundation | Next.js 16, TS strict, Tailwind 4, Drizzle schema + migrations, env validation, docs | ✅ done |
+| 2. Auth | better-auth email/password, secure cookies, DB-backed rate limits, no enumeration, demo sandbox with expiry | ✅ done (email verification/reset require a provider: ⚙️ config) |
+| 3. Core product | applications CRUD, archive, duplicate, table with filters/sort/pagination, Kanban with persisted drag and drop, status timeline, dashboard from real events | ✅ done |
+| 4. Workflow | interviews (timezone-aware) + calendar, follow-ups with overdue/today/upcoming, documents with content sniffing and private download, settings, account deletion, EN/FR | ✅ done |
+| 5. Quality & delivery | 37 unit/integration tests, 9 E2E incl. axe, CI with migration drift check, Dockerfile + compose, deployment docs | ✅ done locally · ⚠️ Docker images and the VPS deploy are not verified yet |
 
-## Phase 2 — Auth
-- better-auth: email + password, secure HTTP-only cookies, session expiry
-- Rate limiting stored in Postgres; generic error messages (no account enumeration)
-- Email verification / password reset **only when an email provider is configured**;
-  otherwise the UI states the feature is unavailable
-- "Try the demo" sandbox accounts + expiry cleanup
-- `getCurrentUser()` Data Access Layer
+## Deferred (not in MVP)
 
-## Phase 3 — Core product
-- Applications: create, edit, archive, delete, duplicate
-- Table view (server-side pagination, filters, sort) and Kanban (drag and drop)
-- Status transitions write `application_event` in the same transaction
-- Companies (minimal, created inline from the application form)
-- Dashboard: metrics computed from real rows and events, explicit empty states
-
-## Phase 4 — Workflow
-- Interviews (timezone-aware), follow-ups with overdue tracking, calendar view
-- Documents: upload to S3 (type sniffing, size cap, SHA-256), signed downloads,
-  resume ↔ application link
-- i18n: English (default) and French, complete for every shipped screen
-
-## Phase 5 — Quality and delivery
-- Vitest unit tests (validation, metrics, transitions)
-- Integration tests against a real Postgres (authorization, cross-user access)
-- Playwright E2E for the main journey + axe accessibility checks
-- GitHub Actions: lint, typecheck, test, build, E2E
-- Dockerfile + compose; deploy to `applyflow.siavashizadi.com` on TySia
-
-## Later (not in MVP)
-Recruiter CRM · analytics area with CSV export · notification center ·
-AI matching behind a provider abstraction · job discovery via official APIs
-(La Bonne Alternance, France Travail). No scraping of sites that forbid it.
+| Module from the brief | Why deferred | Prerequisite |
+|---|---|---|
+| Recruiter CRM (contacts, interactions) | Companies exist; contacts are a separate entity with its own UI | — |
+| Analytics area with date ranges + CSV export | Dashboard covers the core metrics | — |
+| Notification center | Needs a scheduler; dashboard and follow-ups show what's due | background job (pg-boss or cron) |
+| AI matching / cover letters / interview prep | Must not be faked; needs consent flow for CVs (RGPD) and a provider key | provider abstraction + key + consent |
+| Job discovery / URL import | Must use official APIs, never scraping | La Bonne Alternance / France Travail API access |
+| Saved filters, bulk updates, tags | Nice-to-have on top of the list view | — |
+| OAuth providers, 2FA | better-auth plugins | provider credentials |

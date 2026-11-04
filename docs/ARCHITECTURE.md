@@ -20,7 +20,7 @@ Next.js 16 app (Node, standalone output)
   └─ src/lib             shared pure code: Zod schemas, metric math, formatting
   │
   ├──► PostgreSQL 16   (all relational data, rate-limit counters, job queue later)
-  └──► S3-compatible   (private documents; served only through signed, short-lived URLs)
+  └──► Document store  (private local volume or S3; served only via an authorized route, ADR-0003)
 ```
 
 ## Layering rule
@@ -68,6 +68,23 @@ creates a real, isolated user flagged `is_demo` with seeded sample data and a
 24-hour expiry. A scheduled cleanup deletes expired demo users (cascades remove
 their data and documents). Demo users go through exactly the same authorization
 code as real users; there is no "demo bypass".
+
+## Rendering
+
+Next.js 16 with Cache Components. Public pages (`/`, `/fr`, sign-in/up) are
+fully static. App pages are a static shell with the session-dependent part
+streamed behind `<Suspense>`; nothing per-user is cached on the server, so a
+mutation only needs `refresh()`. Charts are server-rendered HTML/CSS with a
+visually hidden data table, so no chart library ships to the browser. The
+only substantial client component is the Kanban board.
+
+## Internationalization
+
+Typed dictionaries (`src/lib/i18n/en.ts`, `fr.ts`). `fr` is checked against
+the English shape with `satisfies`, so a missing translation is a build
+error; a unit test also checks placeholders match. Public pages are
+localized by URL (`/`, `/fr`), app pages by the user's saved language.
+Dates, numbers and currencies use `Intl` with the user's locale and timezone.
 
 ## Deliberately not used (yet)
 

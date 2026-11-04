@@ -1,0 +1,48 @@
+openapi: 3.1.0
+info:
+  title: ApplyFlow HTTP endpoints
+  version: 0.1.0
+  description: >
+    The UI uses Server Actions (see docs/API.md). These are the plain HTTP
+    endpoints. better-auth's /api/auth/* routes are documented upstream.
+paths:
+  /api/health:
+    get:
+      summary: Liveness and database readiness
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema: { type: object, properties: { status: { const: ok } } }
+        "503":
+          description: Database unreachable
+          content:
+            application/json:
+              schema: { type: object, properties: { status: { const: degraded } } }
+  /api/documents/{id}:
+    get:
+      summary: Download one of your own documents
+      security: [{ session: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: File content, always as an attachment
+          headers:
+            Content-Disposition: { schema: { type: string }, description: 'attachment; filename="<sanitized>"' }
+            X-Content-Type-Options: { schema: { const: nosniff } }
+          content:
+            application/pdf: {}
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document: {}
+            image/png: {}
+            image/jpeg: {}
+        "401": { description: No session }
+        "404": { description: Not found or not owned by the caller (indistinguishable by design) }
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: HTTP-only session cookie (prefixed with __Secure- in production)

@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: applyflow
+          POSTGRES_PASSWORD: applyflow
+          POSTGRES_DB: applyflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U applyflow"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: production
+      APP_URL: http://127.0.0.1:3100
+      DATABASE_URL: postgres://applyflow:applyflow@localhost:5432/applyflow
+      TEST_DATABASE_URL: postgres://applyflow:applyflow@localhost:5432/applyflow_test
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-000
+      STORAGE_DRIVER: local
+      DEMO_RATE_LIMIT_PER_HOUR: "1000"
+    steps:
+      # Actions pinned to commit SHAs (tags are mutable).
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Migrate databases
+        run: |
+          PGPASSWORD=applyflow psql -h localhost -U applyflow -d applyflow -c "CREATE DATABASE applyflow_test"
+          pnpm db:migrate
+          DATABASE_URL=$TEST_DATABASE_URL pnpm db:migrate
+      - name: Check migrations match the schema
+        run: |
+          pnpm drizzle-kit generate --name ci_drift_check
+          git status --porcelain drizzle | grep . && { echo "Schema changed without a migration"; exit 1; } || true
+
+      - name: Unit + integration tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: E2E tests
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          scripts/serve-standalone.sh 3100
+          pnpm exec playwright test
+      - if: failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
