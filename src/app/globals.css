@@ -1,26 +1,109 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens. Components use semantic names (bg, surface, fg, muted,
+ * border, accent), never raw palette colors, so light/dark is one switch here.
+ * Contrast: fg/bg ≥ 15:1, muted/bg ≥ 4.6:1 in both themes (WCAG AA for text).
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  color-scheme: light;
+  --bg: #fbfbfa;
+  --surface: #ffffff;
+  --surface-2: #f4f4f2;
+  --border: #e6e6e3;
+  --border-strong: #d4d4d0;
+  --fg: #18181a;
+  --muted: #62626a;
+  --accent: #4f46e5;
+  --accent-fg: #ffffff;
+  --accent-soft: #eef0ff;
+  --danger: #c2261d;
+  --danger-soft: #fdeceb;
+  --success: #15803d;
+  --success-soft: #e9f7ee;
+  --warning: #a15c07;
+  --warning-soft: #fdf3e2;
+  --info: #1d63c9;
+  --info-soft: #e9f1fc;
+  --violet: #6d3fd1;
+  --violet-soft: #f2edfd;
+  --ring: #4f46e5;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+    --bg: #0c0c0e;
+    --surface: #131316;
+    --surface-2: #1b1b1f;
+    --border: #26262b;
+    --border-strong: #34343b;
+    --fg: #ececee;
+    --muted: #9a9aa4;
+    --accent: #8b84ff;
+    --accent-fg: #0c0c0e;
+    --accent-soft: #1e1c38;
+    --danger: #ff7b72;
+    --danger-soft: #2d1513;
+    --success: #4ccf7f;
+    --success-soft: #0f2618;
+    --warning: #f0b45a;
+    --warning-soft: #2b1f0c;
+    --info: #6aa8ff;
+    --info-soft: #0f1d33;
+    --violet: #b79bff;
+    --violet-soft: #221a3a;
+    --ring: #8b84ff;
   }
 }
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  /* Radius scale: small and consistent, no pill-shaped cards. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--fg);
   font-family: var(--font-sans), system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
