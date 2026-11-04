@@ -1,0 +1,1 @@
+ALTER TABLE "application_event" ALTER COLUMN "occurred_at" SET DEFAULT clock_timestamp();

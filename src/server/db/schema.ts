@@ -268,7 +268,10 @@ export const applicationEvent = pgTable(
     fromStatus: applicationStatus("from_status"),
     toStatus: applicationStatus("to_status").notNull(),
     note: text("note"),
-    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    // clock_timestamp(), not now(): now() is the transaction START time, so a
+    // transition that waited on the row lock would sort before the one it
+    // waited for. clock_timestamp() is read after the lock is acquired.
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().default(sql`clock_timestamp()`),
   },
   (t) => [
     foreignKey({
