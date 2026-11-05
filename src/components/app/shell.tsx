@@ -79,7 +79,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
             </ButtonLink>
           </div>
         ) : null}
-        <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:px-8 md:py-8">
+        <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:px-8 md:py-8 has-[[data-wide]]:max-w-none">
           <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
         </main>
       </div>

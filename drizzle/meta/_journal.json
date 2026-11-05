@@ -15,6 +15,13 @@
       "when": 1793817722525,
       "tag": "0001_event_clock_timestamp",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793894457127,
+      "tag": "0002_app_rate_limit",
+      "breakpoints": true
     }
   ]
 }

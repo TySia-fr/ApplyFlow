@@ -1,5 +1,15 @@
 # Project progress
 
+## 2026-11-05 — Polish
+
+- Board: empty and closed columns collapse to drop-target strips; "Show
+  closed" toggle remembered per browser; board uses full width on large screens
+- Dashboard: the three rates in one compact panel, definitions in a disclosure;
+  compact stats and chart on mobile
+- Landing: framed product screenshot, how-it-works, engineering section, CTA
+- Fixed: intermittent duplicate-key error in the demo rate limiter (migration 0002)
+- Results: Vitest 37/37 (15 consecutive runs), Playwright 9/9
+
 ## 2026-11-04 — MVP
 
 ### Done (implemented and tested)

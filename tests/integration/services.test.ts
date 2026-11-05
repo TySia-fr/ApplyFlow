@@ -223,7 +223,11 @@ describe("account lifecycle", () => {
 describe("rate limiting", () => {
   it("allows up to max calls per window, atomically under concurrency", async () => {
     const key = `test:${randomUUID()}`;
-    const results = await Promise.all(Array.from({ length: 8 }, () => consumeRateLimit(key, 5, 60)));
-    expect(results.filter(Boolean)).toHaveLength(5);
+    // 20 concurrent calls, repeated: previously flaky with a duplicate-key error.
+    for (let round = 0; round < 5; round++) {
+      const k = `${key}:${round}`;
+      const results = await Promise.all(Array.from({ length: 20 }, () => consumeRateLimit(k, 5, 60)));
+      expect(results.filter(Boolean)).toHaveLength(5);
+    }
   });
 });

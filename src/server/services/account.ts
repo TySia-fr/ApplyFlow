@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, lt, sql } from "drizzle-orm";
 import { db as defaultDb, type Db } from "@/server/db";
-import { rateLimit, user } from "@/server/db/schema";
+import { appRateLimit, user } from "@/server/db/schema";
 import { storage } from "@/server/storage";
 import { allStorageKeys } from "@/server/services/documents";
 import { errorFields, log } from "@/server/logger";
@@ -42,23 +42,23 @@ export async function purgeExpiredDemos(limit = 25, db: Db = defaultDb): Promise
 }
 
 /**
- * Fixed-window counter in Postgres. Atomic: the upsert either starts a new
- * window or increments the current one in a single statement.
+ * Fixed-window counter in Postgres. Atomic: a single upsert on a single
+ * primary key either starts a new window or increments the current one.
  * Returns true if the call is allowed.
  */
 export async function consumeRateLimit(key: string, max: number, windowSeconds: number, db: Db = defaultDb) {
   const now = Date.now();
-  const windowStart = now - windowSeconds * 1000;
+  const expired = now - windowSeconds * 1000;
   const [row] = await db
-    .insert(rateLimit)
-    .values({ id: key, key, count: 1, lastRequest: now })
+    .insert(appRateLimit)
+    .values({ key, count: 1, windowStart: now })
     .onConflictDoUpdate({
-      target: rateLimit.key,
+      target: appRateLimit.key,
       set: {
-        count: sql`case when ${rateLimit.lastRequest} < ${windowStart} then 1 else ${rateLimit.count} + 1 end`,
-        lastRequest: sql`case when ${rateLimit.lastRequest} < ${windowStart} then ${now} else ${rateLimit.lastRequest} end`,
+        count: sql`case when ${appRateLimit.windowStart} < ${expired} then 1 else ${appRateLimit.count} + 1 end`,
+        windowStart: sql`case when ${appRateLimit.windowStart} < ${expired} then ${now} else ${appRateLimit.windowStart} end`,
       },
     })
-    .returning({ count: rateLimit.count });
+    .returning({ count: appRateLimit.count });
   return (row?.count ?? 1) <= max;
 }

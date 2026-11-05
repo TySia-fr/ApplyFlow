@@ -24,7 +24,8 @@ erDiagram
 | Table | Purpose | Notes |
 |---|---|---|
 | `user`, `session`, `account`, `verification` | better-auth | `user` adds `locale`, `timezone`, `is_demo`, `demo_expires_at` |
-| `rate_limit` | auth + demo rate limits | atomic upsert counter |
+| `rate_limit` | better-auth rate limits | managed by better-auth |
+| `app_rate_limit` | app limits (demo creation) | single-PK atomic upsert; see migration 0002 |
 | `company` | per-user companies | unique `(user_id, lower(name))` |
 | `application` | the core entity | current `status` + `position` (Kanban order) |
 | `application_event` | append-only status history | written in the same transaction as the status change |

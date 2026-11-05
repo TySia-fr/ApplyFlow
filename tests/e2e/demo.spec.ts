@@ -7,12 +7,12 @@ test("landing pages render in both languages and pass accessibility checks", asy
   await expectAccessible(page);
   await page.getByRole("link", { name: "fr", exact: true }).click();
   await expect(page).toHaveURL(/\/fr$/);
-  await expect(page.getByRole("button", { name: /Essayer la démo/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Essayer la démo/ }).first()).toBeVisible();
 });
 
 test("Try the demo creates an isolated, seeded sandbox", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /Try the demo/ }).click();
+  await page.getByRole("button", { name: /Try the demo/ }).first().click();
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByText(/Demo account\. Everything here is sample data/)).toBeVisible();
   await expect(page.getByText("Total applications")).toBeVisible();
@@ -37,7 +37,7 @@ test("board: dragging a card persists the move and records it in the timeline", 
   // Wide enough that both columns are on screen without horizontal scrolling.
   await page.setViewportSize({ width: 2400, height: 1000 });
   await page.goto("/");
-  await page.getByRole("button", { name: /Try the demo/ }).click();
+  await page.getByRole("button", { name: /Try the demo/ }).first().click();
   await expect(page).toHaveURL(/\/app$/);
   await page.goto("/app/applications/board");
 

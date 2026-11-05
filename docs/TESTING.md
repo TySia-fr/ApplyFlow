@@ -36,6 +36,11 @@ run starts several demos from one IP.
 3. Cards couldn't be dragged by their title, and drops landed in the
    neighbouring column (rect-based collision + eager auto-scroll). Fixed with
    pointer-first collision detection and a smaller auto-scroll zone.
+4. The demo rate limiter failed intermittently under concurrent requests
+   (duplicate-key error): better-auth's table has two unique indexes and
+   `ON CONFLICT` arbitrates only one. Moved app limits to `app_rate_limit`
+   with a single primary key (migration 0002); the test now fires 20
+   concurrent calls in 5 rounds and was run 15 times in a row.
 
 ## Not covered yet
 

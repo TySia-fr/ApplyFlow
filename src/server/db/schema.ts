@@ -108,6 +108,15 @@ export const rateLimit = pgTable("rate_limit", {
   lastRequest: bigint("last_request", { mode: "number" }).notNull(),
 });
 
+// App-level limits (demo creation). Separate from better-auth's table on
+// purpose: that one has two unique indexes (id and key), and ON CONFLICT can
+// arbitrate only one, so concurrent upserts there can still fail.
+export const appRateLimit = pgTable("app_rate_limit", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull(),
+  windowStart: bigint("window_start", { mode: "number" }).notNull(),
+});
+
 // ─── Domain ─────────────────────────────────────────────────────────────────
 
 export const applicationStatus = pgEnum("application_status", [

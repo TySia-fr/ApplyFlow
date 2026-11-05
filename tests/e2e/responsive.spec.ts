@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("mobile: navigation menu works and pages don't overflow horizontally", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /Try the demo/ }).click();
+  await page.getByRole("button", { name: /Try the demo/ }).first().click();
   await expect(page).toHaveURL(/\/app$/);
 
   for (const url of ["/app", "/app/applications", "/app/follow-ups", "/app/documents", "/app/settings"]) {

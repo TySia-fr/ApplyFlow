@@ -25,29 +25,23 @@ function pct(r: Rate) {
   return r.value === null ? "—" : `${Math.round(r.value * 100)}%`;
 }
 
-function RateCard({ label, def, rate, dict }: { label: string; def: string; rate: Rate; dict: Dictionary }) {
+function RateCell({ label, rate, dict }: { label: string; rate: Rate; dict: Dictionary }) {
   return (
-    <Panel className="p-4">
-      <div className="text-[13px] text-muted">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums">{pct(rate)}</div>
-      <div className="mt-1 text-xs text-muted">
-        {rate.denominator === 0
-          ? dict.dashboard.noData
-          : t(dict.dashboard.ofSubmitted, { n: rate.numerator, d: rate.denominator })}
+    <div className="min-w-0 px-3 py-3 sm:px-4 sm:py-4">
+      <div className="truncate text-xs text-muted sm:text-[13px]">{label}</div>
+      <div className="mt-1 text-xl font-semibold tabular-nums sm:text-2xl">{pct(rate)}</div>
+      <div className="mt-0.5 text-[11px] text-muted sm:text-xs">
+        {rate.denominator === 0 ? "—" : t(dict.dashboard.ofSubmitted, { n: rate.numerator, d: rate.denominator })}
       </div>
-      {rate.denominator > 0 && rate.smallSample ? (
-        <div className="mt-2 text-xs text-warning">{t(dict.dashboard.smallSample, { min: MIN_SAMPLE })}</div>
-      ) : null}
-      <p className="mt-2 text-xs leading-relaxed text-muted">{def}</p>
-    </Panel>
+    </div>
   );
 }
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="px-4 py-3">
-      <div className="text-[13px] text-muted">{label}</div>
-      <div className="mt-0.5 text-xl font-semibold tabular-nums">{value}</div>
+    <div className="min-w-0 px-3 py-2.5 sm:px-4 sm:py-3">
+      <div className="text-xs leading-tight text-muted sm:text-[13px]">{label}</div>
+      <div className="mt-0.5 text-lg font-semibold tabular-nums sm:text-xl">{value}</div>
     </div>
   );
 }
@@ -93,7 +87,7 @@ export default async function DashboardPage() {
         }
       />
 
-      <Panel className="mb-4 grid grid-cols-2 divide-border sm:grid-cols-3 lg:grid-cols-6 lg:divide-x">
+      <Panel className="mb-4 grid grid-cols-3 lg:grid-cols-6 lg:divide-x lg:divide-border">
         <Stat label={d.total} value={f.total} />
         <Stat label={d.active} value={f.active} />
         <Stat label={d.thisMonth} value={data.thisMonth} />
@@ -102,17 +96,42 @@ export default async function DashboardPage() {
         <Stat label={d.rejected} value={f.rejected} />
       </Panel>
 
-      <div className="mb-4 grid gap-4 md:grid-cols-3">
-        <RateCard label={d.responseRate} def={d.responseDef} rate={f.responseRate} dict={dict} />
-        <RateCard label={d.interviewRate} def={d.interviewDef} rate={f.interviewRate} dict={dict} />
-        <RateCard label={d.offerRate} def={d.offerDef} rate={f.offerRate} dict={dict} />
-      </div>
+      <Panel className="mb-4">
+        <div className="grid grid-cols-3 divide-x divide-border">
+          <RateCell label={d.responseRate} rate={f.responseRate} dict={dict} />
+          <RateCell label={d.interviewRate} rate={f.interviewRate} dict={dict} />
+          <RateCell label={d.offerRate} rate={f.offerRate} dict={dict} />
+        </div>
+        {f.submitted > 0 && f.responseRate.smallSample ? (
+          <p className="border-t border-border px-4 py-2 text-xs text-warning">{t(d.smallSample, { min: MIN_SAMPLE })}</p>
+        ) : f.submitted === 0 ? (
+          <p className="border-t border-border px-4 py-2 text-xs text-muted">{d.noData}</p>
+        ) : null}
+        <details className="group border-t border-border">
+          <summary className="cursor-pointer list-none px-4 py-2 text-xs text-muted hover:text-fg [&::-webkit-details-marker]:hidden">
+            <span className="mr-1 inline-block transition-transform group-open:rotate-90">›</span>
+            {d.howCalculated}
+          </summary>
+          <dl className="grid gap-2 px-4 pb-3 text-xs sm:grid-cols-3">
+            {[
+              [d.responseRate, d.responseDef],
+              [d.interviewRate, d.interviewDef],
+              [d.offerRate, d.offerDef],
+            ].map(([k, v]) => (
+              <div key={k}>
+                <dt className="font-medium text-fg">{k}</dt>
+                <dd className="mt-0.5 leading-relaxed text-muted">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      </Panel>
 
       <div className="mb-4 grid items-start gap-4 lg:grid-cols-5">
         <Panel className="lg:col-span-3">
           <PanelHeader title={d.weekly} />
           {/* Server-rendered bars + a real table for screen readers. No chart JS shipped. */}
-          <div className="flex h-44 items-end gap-1.5 px-4 pt-4 pb-2" aria-hidden>
+          <div className="flex h-32 items-end gap-1.5 px-4 pt-4 pb-2 sm:h-44" aria-hidden>
             {data.weekly.map((w) => (
               <div key={w.weekStart} className="flex h-full flex-1 flex-col items-center justify-end gap-1" title={`${t(d.weekOf, { date: formatCalendarDate(new Date(w.weekStart), user.locale) })}: ${w.count}`}>
                 <span className="text-[10px] tabular-nums text-muted">{w.count || ""}</span>
