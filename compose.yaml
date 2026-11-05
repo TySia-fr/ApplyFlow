@@ -43,7 +43,7 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
     read_only: true
-    tmpfs: [/tmp]
+    tmpfs: [/tmp, /app/.next/cache]
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
 

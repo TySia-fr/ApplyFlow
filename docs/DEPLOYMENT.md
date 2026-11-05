@@ -1,112 +1,82 @@
-# Deployment (single VPS, Docker Compose, Nginx)
+# Deployment
 
-Target: `applyflow.siavashizadi.com` on the existing VPS, next to the other
-apps, without touching their containers, ports or databases.
+Target: `applyflow.siavashizadi.com` on a small shared VPS (3.7 GB RAM,
+other apps on ports 3001, 3002, 5678). ApplyFlow uses port **3003**, its own
+compose project, database and volumes; nothing is shared with the other apps.
 
-> Not yet verified on the server: the images were not built in the
-> development environment (no Docker daemon there). `docker compose config`
-> validates, and CI builds and tests the same code without Docker.
+## How it works
 
-## 1. First deploy
+```
+push to main ─► CI: lint · typecheck · tests · build · E2E
+                   └─ all green ─► build images ─► ghcr.io/tysia-fr/applyflow:sha-<commit>
+                                                    ghcr.io/tysia-fr/applyflow-migrate:sha-<commit>
+server: deploy/update.sh ─► pull images ─► migrate ─► swap app ─► health check
+                                                              └─ unhealthy ─► roll back
+```
+
+**The server never builds.** A Next.js build needs more memory than the VPS
+can spare next to the other apps; pulling a prebuilt image needs almost none.
+Images are tagged with the commit SHA, so every deploy is a known version and
+rollback is instant. Containers have hard memory limits (db 256 MB, app 448 MB).
+
+## First deploy
+
+1. DNS: an `A` record for `applyflow` pointing at the server's IP.
+2. Merge to `main` and wait for CI's **image** job to finish.
+3. GHCR packages start private. Once, in GitHub → your profile → Packages →
+   `applyflow` and `applyflow-migrate` → Package settings → Change visibility →
+   **Public**. (Or keep them private and run `sudo docker login ghcr.io` on
+   the server with a read-only token.)
+4. On the server:
 
 ```bash
-# on the server
-mkdir -p ~/apps && cd ~/apps
-git clone https://github.com/TySia-fr/applyflow.git && cd applyflow
-
-cp .env.example .env
-# edit .env:
-#   NODE_ENV=production
-#   APP_URL=https://applyflow.siavashizadi.com
-#   BETTER_AUTH_SECRET=$(openssl rand -base64 32)
-#   POSTGRES_PASSWORD=$(openssl rand -hex 24)
-#   APP_PORT=3003            # pick a port not used by other apps
-#   (DATABASE_URL is set by compose; leave the example value)
-chmod 600 .env
-
-free -h && df -h           # the build needs ~1.5 GB RAM; the server has swap
-docker compose up -d --build
-docker compose ps
-curl -s http://127.0.0.1:3003/api/health   # {"status":"ok"}
+curl -fsSLO https://raw.githubusercontent.com/TySia-fr/ApplyFlow/main/deploy/install.sh
+less install.sh
+bash install.sh
 ```
 
-`migrate` runs once per `up` and must succeed before `app` starts.
+`install.sh` checks DNS, port, disk and tools before changing anything; then
+creates `~/apps/applyflow/.env` with fresh secrets (never overwrites an
+existing one), pulls and starts the stack, installs the Nginx site (validated
+with `nginx -t`; removed again if invalid), obtains the certificate with
+certbot, and installs the nightly backup. Re-running it is safe.
 
-## 2. Nginx + TLS
-
-`/etc/nginx/sites-available/applyflow`:
-
-```nginx
-limit_req_zone $binary_remote_addr zone=applyflow_auth:10m rate=10r/m;
-
-server {
-  server_name applyflow.siavashizadi.com;
-  client_max_body_size 12m;                 # 10 MB uploads + form overhead
-
-  location /api/auth/ {
-    limit_req zone=applyflow_auth burst=5 nodelay;
-    proxy_pass http://127.0.0.1:3003;
-    include /etc/nginx/applyflow-proxy.conf;
-  }
-  location / {
-    proxy_pass http://127.0.0.1:3003;
-    include /etc/nginx/applyflow-proxy.conf;
-  }
-}
-```
-
-`/etc/nginx/applyflow-proxy.conf`:
-
-```nginx
-proxy_set_header Host $host;
-proxy_set_header X-Real-IP $remote_addr;               # used for rate limits
-proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-proxy_set_header X-Forwarded-Proto $scheme;
-proxy_buffering off;                                    # streaming responses
-```
-
-```bash
-sudo ln -s /etc/nginx/sites-available/applyflow /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d applyflow.siavashizadi.com
-```
-
-Add the DNS `A` record for `applyflow` first.
-
-## 3. Updates and rollback
+## Updates
 
 ```bash
 cd ~/apps/applyflow
-git pull --ff-only
-docker compose up -d --build        # migrate runs, then the new app replaces the old
-curl -fsS http://127.0.0.1:3003/api/health
+./update.sh                 # latest commit on main
+./update.sh sha-abc1234     # a specific version (also how you roll back by hand)
 ```
 
-Rollback: `git checkout <previous-sha> && docker compose up -d --build`.
-Migrations are additive, so the previous version runs against the newer schema.
+If the new version fails its health check, `update.sh` restarts the previous
+one and prints the logs. Migrations are additive, so an older app runs against
+a newer schema.
 
-## 4. Backups
+## Backups and restore
+
+Nightly at 03:41 to `/var/backups/applyflow`: a `pg_dump` and a tarball of the
+documents volume, kept 14 days. Log: `/var/log/applyflow-backup.log`.
+
+Restore (try it once on purpose, so it's known to work):
 
 ```bash
-# /usr/local/bin/applyflow-backup.sh  (cron: 23 3 * * *)
-set -euo pipefail
-DIR=/var/backups/applyflow; mkdir -p "$DIR"
 cd ~/apps/applyflow
-docker compose exec -T db pg_dump -U applyflow -Fc applyflow > "$DIR/db-$(date +%F).dump"
-docker run --rm -v applyflow_documents:/d -v "$DIR":/b alpine tar czf /b/docs-$(date +%F).tgz -C /d .
-find "$DIR" -type f -mtime +14 -delete
+sudo docker compose -f compose.prod.yaml exec -T db pg_restore -U applyflow -d applyflow --clean < /var/backups/applyflow/db-YYYY-MM-DD.dump
+sudo docker run --rm -v applyflow_documents:/d -v /var/backups/applyflow:/b alpine tar xzf /b/docs-YYYY-MM-DD.tgz -C /d
 ```
 
-Restore (test this once, on a copy):
+## Operations
 
-```bash
-docker compose exec -T db pg_restore -U applyflow -d applyflow --clean < db-YYYY-MM-DD.dump
-docker run --rm -v applyflow_documents:/d -v "$PWD":/b alpine tar xzf /b/docs-YYYY-MM-DD.tgz -C /d
-```
+| Task | Command |
+|---|---|
+| Logs | `sudo docker compose -f compose.prod.yaml logs -f app` |
+| Status | `sudo docker compose -f compose.prod.yaml ps` |
+| Running version | `cat ~/apps/applyflow/.deployed-tag` |
+| Security events | `… logs app \| grep '"msg":"security"'` |
+| Enable email | set `RESEND_API_KEY` and `EMAIL_FROM` in `.env`, then `./update.sh` |
 
-## 5. Optional
+## Local full stack
 
-- **Email**: set `RESEND_API_KEY` and `EMAIL_FROM` (a verified domain). This
-  turns on verification on sign-up and password reset.
-- **S3**: set `STORAGE_DRIVER=s3` and every `S3_*` variable. Existing local
-  files are not migrated automatically.
+`compose.yaml` (repo root) builds the images locally instead of pulling:
+`POSTGRES_PASSWORD=dev docker compose up -d --build`.
