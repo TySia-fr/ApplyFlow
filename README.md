@@ -23,6 +23,11 @@ that creates a private sandbox with sample data, deleted after 24 hours.
 - **Follow-ups**: overdue / today / upcoming, per application or general
 - **Documents**: CV and cover-letter versions in private storage, type
   checked from file contents, downloadable only by their owner
+- **Discover**: saved searches on La Bonne Alternance (France's public
+  apprenticeship job service); new offers daily, one click to add to the pipeline
+- **Telegram bot**: send a job link from your phone and it lands in your
+  pipeline; daily new offers with buttons; reminders before interviews and
+  when a follow-up is due
 - **English and French**, light and dark mode, responsive down to phones
 
 ## Stack
@@ -51,7 +56,8 @@ Details: [ARCHITECTURE](docs/ARCHITECTURE.md) · [DATABASE](docs/DATABASE.md) ·
 [DEPLOYMENT](docs/DEPLOYMENT.md) · [DEVELOPMENT](docs/DEVELOPMENT.md) ·
 ADRs: [0001](docs/adr/0001-drizzle-instead-of-prisma.md),
 [0002](docs/adr/0002-server-actions-over-rest.md),
-[0003](docs/adr/0003-local-storage-default.md)
+[0003](docs/adr/0003-local-storage-default.md),
+[0004](docs/adr/0004-telegram-and-discovery.md)
 
 ## Run locally
 
@@ -78,6 +84,9 @@ Or the whole stack: `POSTGRES_PASSWORD=… docker compose up -d --build`.
 | `S3_*` | if `s3` | Endpoint, region, bucket, keys |
 | `RESEND_API_KEY`, `EMAIL_FROM` | no | Enables email verification and password reset |
 | `DEMO_RATE_LIMIT_PER_HOUR` | no | Demo sandboxes per IP per hour (default 5) |
+| `LBA_API_KEY` | no | Enables Discover (La Bonne Alternance, non-commercial use) |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_WEBHOOK_SECRET` | no, all or none | Enables the Telegram bot |
+| `CRON_SECRET` | for scheduled jobs | Protects `/api/cron/*` |
 
 The app refuses to start if the configuration is invalid.
 
@@ -94,8 +103,8 @@ The app refuses to start if the configuration is invalid.
 
 ## Status
 
-The MVP is implemented and tested: 37 unit/integration tests and 9
-end-to-end tests pass. Deferred modules (recruiter CRM, AI features, job
+The MVP plus the Telegram bot and job discovery are implemented and tested:
+68 unit/integration tests and 12 end-to-end tests pass. Deferred modules (recruiter CRM, AI features, job
 discovery, notifications) and their prerequisites are listed in
 [IMPLEMENTATION_PLAN](docs/IMPLEMENTATION_PLAN.md). Known limitations are in
 [SECURITY](docs/SECURITY.md#known-limitations).

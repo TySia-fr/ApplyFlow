@@ -27,6 +27,23 @@ run starts several demos from one IP.
 - `pnpm exec playwright test`: **9 passed** (8 desktop, 1 mobile)
 - The concurrency test was run 10 times in a row: 10/10 passed.
 
+## Telegram and discovery (2026-11-10)
+
+- `tests/unit/integrations.test.ts`: SSRF classifier and URL guard,
+  JobPosting parsing, callback payloads, HTML escaping, LBA mapping, saved
+  search validation.
+- `tests/integration/telegram-discovery.test.ts`: linking (single use,
+  expiry, hash-only storage, one chat per account), capture by link with and
+  without structured data, unsafe links, cross-user button presses, offer
+  dedupe, idempotent "add to pipeline", per-user limits, digests sent once,
+  reminders sent once, retry after transient failure, unlink on 403, cascade.
+- `tests/e2e/discover-telegram.spec.ts`: Discover in the demo, account linking
+  through the real webhook route (and 401 without the secret), cron auth.
+- Live check (not in CI): a hostname mapped to 127.0.0.1 with a server on
+  port 80 was refused by `fetchHtmlSafely` at connect time.
+
+Results: Vitest **68/68** (run 3× in a row), Playwright **12/12**.
+
 ## Bugs these tests found during development
 
 1. Dashboard crashed for any user with history: Postgres returned an enum

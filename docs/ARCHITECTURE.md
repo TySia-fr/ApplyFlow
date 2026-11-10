@@ -69,6 +69,19 @@ creates a real, isolated user flagged `is_demo` with seeded sample data and a
 their data and documents). Demo users go through exactly the same authorization
 code as real users; there is no "demo bypass".
 
+## Integrations and scheduled jobs
+
+```
+Telegram ──HTTPS──► /api/telegram/webhook ──► services/telegram (link, capture, buttons)
+host cron ─local──► /api/cron/daily ──► La Bonne Alternance search ─► job_offer ─► Telegram digest
+host cron ─local──► /api/cron/reminders ──► interviews ≤ 24 h, due follow-ups ─► Telegram
+```
+
+External services sit behind small interfaces (`JobSource`, `Telegram`,
+`FetchHtml`) built from configuration in `integrations/wiring.ts`, so tests
+inject fakes and the app runs unchanged when an integration isn't configured.
+See ADR-0004.
+
 ## Rendering
 
 Next.js 16 with Cache Components. Public pages (`/`, `/fr`, sign-in/up) are

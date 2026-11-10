@@ -12,6 +12,9 @@ exist are documented below and in [`openapi.yaml`](openapi.yaml).
 | GET | `/api/health` | none | `200 {"status":"ok"}` or `503 {"status":"degraded"}` (DB unreachable) |
 | GET | `/api/documents/{id}` | session cookie | file bytes as `attachment`; `401` no session, `404` missing **or not yours** |
 | GET/POST | `/api/auth/*` | — | better-auth endpoints (sign-in, sign-up, sign-out, session) |
+| POST | `/api/telegram/webhook` | `X-Telegram-Bot-Api-Secret-Token` | `200` after authentication (always, so Telegram doesn't redeliver); `401` bad secret; `404` bot not configured |
+| POST | `/api/cron/daily` | `Authorization: Bearer <CRON_SECRET>` | runs due saved searches, sends digests; JSON summary. Blocked at Nginx |
+| POST | `/api/cron/reminders` | `Authorization: Bearer <CRON_SECRET>` | sends due reminders; `{"sent": n}`. Blocked at Nginx |
 
 ## Server Actions
 
@@ -34,6 +37,8 @@ All live in `src/server/actions/`. Each one:
 | `uploadDocumentAction`, `deleteDocumentAction` | `documents.*` | `documentInput` + file checks |
 | `updateSettingsAction`, `changePasswordAction`, `deleteAccountAction` | `account.*` / better-auth | `settingsInput` |
 | `signInAction`, `signUpAction`, `signOutAction`, `startDemoAction` | better-auth, `demo.*` | local schemas |
+| `createSavedSearchAction`, `deleteSavedSearchAction`, `runSavedSearchAction`, `offerAction` | `discovery.*` | `savedSearchInput` |
+| `createTelegramLinkAction`, `unlinkTelegramAction` | `telegram.*` | — |
 
 ## If a public API is needed later
 

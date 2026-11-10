@@ -29,6 +29,14 @@ malicious uploads.
 | Secrets in the client bundle | All secrets read in `server-only` modules; env validated at boot. | build (server-only import guard) |
 | Clickjacking, sniffing, referrer leaks | CSP `frame-ancestors 'none'`, `X-Frame-Options`, `nosniff`, `Referrer-Policy`, HSTS, `Permissions-Policy`. | E2E "security headers are set" |
 
+| SSRF through links sent to the bot | http(s) on ports 80/443 only, no credentials in URLs; every resolved IP checked against private, loopback, link-local, CGNAT, multicast and reserved v4/v6 ranges **inside the socket's DNS lookup** (no DNS-rebinding gap); redirects followed manually and re-validated; 8 s / 1 MB limits; HTML only | unit tests on the classifier and URL guard; a live test where a hostname resolving to 127.0.0.1 was refused at connect time while plain `curl` reached it |
+| Forged Telegram updates | `X-Telegram-Bot-Api-Secret-Token` compared in constant time before the body is read | E2E: missing/wrong secret → 401 |
+| Acting on another user's data via bot buttons | Callback payloads are validated (prefix + UUID); the user is resolved from the linked chat, and every service call is scoped by that user | integration test: Bob pressing buttons with Alice's ids changes nothing |
+| Account-link token theft/replay | 32 random chars, SHA-256 stored, 15-min expiry, single use, atomic consume | integration tests |
+| Scheduled-job endpoints | Bearer `CRON_SECRET` (constant-time) **and** blocked at Nginx (`location /api/cron/ { return 404; }`); cron passes the secret via stdin, not argv | E2E: 401 without the secret |
+| Bot message injection | Every interpolated value is HTML-escaped for Telegram's parse mode | unit + integration tests |
+| Secrets typed on the server | `setup-integrations.sh` reads tokens hidden (`read -s`), never echoes them, sends them to Telegram via stdin | script review |
+
 Security-relevant events (`sign_in_failed`, `authz.not_found`,
 `document_denied`, `password_changed`, `account.deleted`, `demo.rate_limited`)
 are logged as JSON lines with `"msg":"security"`.
@@ -45,5 +53,7 @@ are logged as JSON lines with `"msg":"security"`.
   proxy (see DEPLOYMENT.md), or every client shares one bucket.
 - **Uploaded files are not virus-scanned.** They are never executed or served
   inline, but a user downloading their own file gets it as uploaded.
+- **Shared links from bot-blocking sites** (LinkedIn) can't be read; the bot
+  asks the user for the title and company rather than scraping around it.
 - **Demo accounts** are real accounts with a 24-hour expiry; expired ones are
   purged opportunistically when a new demo starts, not by a scheduler.

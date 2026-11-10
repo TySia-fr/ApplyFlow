@@ -39,8 +39,36 @@ paths:
             image/jpeg: {}
         "401": { description: No session }
         "404": { description: Not found or not owned by the caller (indistinguishable by design) }
+  /api/telegram/webhook:
+    post:
+      summary: Telegram bot updates (called by Telegram)
+      parameters:
+        - { name: X-Telegram-Bot-Api-Secret-Token, in: header, required: true, schema: { type: string } }
+      requestBody: { content: { application/json: { schema: { type: object, description: "Telegram Update" } } } }
+      responses:
+        "200": { description: Accepted (also when the update is ignored or fails internally) }
+        "401": { description: Missing or wrong secret }
+        "404": { description: Bot not configured }
+  /api/cron/daily:
+    post:
+      summary: Run due saved searches and send Telegram digests (server cron only)
+      security: [{ cron: [] }]
+      responses:
+        "200": { description: Summary, content: { application/json: {} } }
+        "401": { description: Missing or wrong secret }
+  /api/cron/reminders:
+    post:
+      summary: Send due interview and follow-up reminders (server cron only)
+      security: [{ cron: [] }]
+      responses:
+        "200": { description: "{ sent: number }", content: { application/json: {} } }
+        "401": { description: Missing or wrong secret }
 components:
   securitySchemes:
+    cron:
+      type: http
+      scheme: bearer
+      description: CRON_SECRET
     session:
       type: apiKey
       in: cookie

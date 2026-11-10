@@ -41,6 +41,23 @@ existing one), pulls and starts the stack, installs the Nginx site (validated
 with `nginx -t`; removed again if invalid), obtains the certificate with
 certbot, and installs the nightly backup. Re-running it is safe.
 
+## Telegram bot and job discovery
+
+After the first deploy, once:
+
+```bash
+cd ~
+curl -fsSL "https://raw.githubusercontent.com/TySia-fr/ApplyFlow/main/deploy/install.sh?v=$(date +%s)" -o install.sh
+bash install.sh                              # new scripts, cron, /api/cron block
+cd ~/apps/applyflow && ./setup-integrations.sh
+```
+
+`setup-integrations.sh` asks (hidden input) for the bot token from @BotFather
+and the La Bonne Alternance API key, verifies the token belongs to
+@ApplyFlowAppBot, writes `.env`, restarts the app and registers the webhook.
+Either can be skipped with Enter. Cron (installed by `install.sh`): offers at
+06:50 UTC, reminders every 15 minutes; log in `/var/log/applyflow-cron.log`.
+
 ## Updates
 
 ```bash

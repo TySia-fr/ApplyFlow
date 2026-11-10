@@ -41,8 +41,8 @@ ok "disk: ${avail_gb}G free"
 
 echo "── Files"
 mkdir -p "$DIR" && cd "$DIR"
-for f in compose.prod.yaml update.sh backup.sh nginx.conf; do curl -fsSL "$RAW/$f" -o "$f"; done
-chmod +x update.sh backup.sh
+for f in compose.prod.yaml update.sh backup.sh nginx.conf cron.sh setup-integrations.sh; do curl -fsSL "$RAW/$f" -o "$f"; done
+chmod +x update.sh backup.sh cron.sh setup-integrations.sh
 ok "downloaded deploy files to $DIR"
 
 if [ ! -f .env ]; then
@@ -54,6 +54,7 @@ APP_PORT=$PORT
 BETTER_AUTH_SECRET=$(openssl rand -base64 32)
 POSTGRES_PASSWORD=$(openssl rand -hex 24)
 DEMO_RATE_LIMIT_PER_HOUR=5
+CRON_SECRET=$(openssl rand -hex 32)
 # Optional: enables email verification and password reset
 RESEND_API_KEY=
 EMAIL_FROM=
@@ -61,6 +62,11 @@ ENV
   ok "created .env with fresh secrets (chmod 600)"
 else
   ok ".env exists; left unchanged"
+fi
+# Added in later versions: create missing secrets without touching existing values.
+if ! grep -qE '^CRON_SECRET=.+' .env; then
+  { grep -vE '^CRON_SECRET=' .env || true; echo "CRON_SECRET=$(openssl rand -hex 32)"; } > .env.tmp && cat .env.tmp > .env && rm -f .env.tmp
+  ok "added CRON_SECRET to .env"
 fi
 
 echo "── Containers"
@@ -77,6 +83,13 @@ if [ ! -f "$SITE" ]; then
 else
   ok "nginx site exists; left unchanged"
 fi
+# Scheduled-job endpoints are for the server's own cron only: hide them from the internet.
+if ! sudo grep -q "location /api/cron/" "$SITE"; then
+  sudo cp "$SITE" "$SITE.bak"
+  sudo sed -i 's#^\(\s*\)location /api/auth/ {#\1location /api/cron/ { return 404; }\n\n\1location /api/auth/ {#' "$SITE"
+  if sudo nginx -t 2>/dev/null; then sudo systemctl reload nginx; ok "blocked /api/cron/ from outside"
+  else sudo mv "$SITE.bak" "$SITE"; warn "could not add the /api/cron/ block; nginx config restored"; fi
+fi
 
 if ! sudo test -d "/etc/letsencrypt/live/$DOMAIN"; then
   sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --redirect \
@@ -92,9 +105,12 @@ line="41 3 * * * APP_DIR=$DIR /usr/local/bin/applyflow-backup.sh >> /var/log/app
 # `crontab -l` exits 1 when root has no crontab yet, and grep -v exits 1 when
 # nothing is left: both are normal here, so neither may abort the script.
 existing=$(sudo crontab -l 2>/dev/null || true)
-kept=$(grep -v applyflow-backup.sh <<<"$existing" || true)
-printf '%s\n' "$kept" "$line" | sed '/^$/d' | sudo crontab -
+kept=$(grep -vE 'applyflow-(backup|cron)' <<<"$existing" || true)
+daily="50 6 * * * APP_DIR=$DIR $DIR/cron.sh daily >> /var/log/applyflow-cron.log 2>&1"
+reminders="*/15 * * * * APP_DIR=$DIR $DIR/cron.sh reminders >> /var/log/applyflow-cron.log 2>&1"
+printf '%s\n' "$kept" "$line" "$daily" "$reminders" | sed '/^$/d' | sudo crontab -
 ok "nightly backup at 03:41, 14 days kept"
+ok "scheduled jobs: offers daily at 06:50 UTC, reminders every 15 min"
 
 echo "── Check"
 sleep 2

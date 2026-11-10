@@ -35,6 +35,11 @@ jobs:
       BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-000
       STORAGE_DRIVER: local
       DEMO_RATE_LIMIT_PER_HOUR: "1000"
+      # Dummy values: let E2E exercise the bot and cron routes. Nothing is sent to Telegram.
+      TELEGRAM_BOT_TOKEN: "123456789:test-token-not-real-aaaaaaaaaaaaaaaaaaaa"
+      TELEGRAM_BOT_USERNAME: ApplyFlowAppBot
+      TELEGRAM_WEBHOOK_SECRET: e2e-webhook-secret-0123456789abcdef0123
+      CRON_SECRET: e2e-cron-secret-0123456789abcdef0123456789
     steps:
       # Actions pinned to commit SHAs (tags are mutable).
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5

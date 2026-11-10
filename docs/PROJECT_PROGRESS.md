@@ -1,5 +1,17 @@
 # Project progress
 
+## 2026-11-10 — Telegram bot and job discovery
+
+- Discover page: saved searches on La Bonne Alternance, offers deduplicated
+  per user, add to pipeline / dismiss / restore; labelled sample offers in demo
+- Telegram bot @ApplyFlowAppBot: one-time deep-link account linking, add a job
+  by sending its link (schema.org JobPosting, else asks "Title @ Company"),
+  inline buttons, /today, /unlink; EN/FR
+- Scheduled jobs via host cron: daily searches + digests, reminders every 15 min
+- SSRF-hardened URL fetching; migration 0003 (hand-edited SET NULL (column))
+- Deployment: setup-integrations.sh, cron.sh, /api/cron blocked at Nginx
+- Results: Vitest 68/68, Playwright 12/12
+
 ## 2026-11-05 — Polish
 
 - Board: empty and closed columns collapse to drop-target strips; "Show

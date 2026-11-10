@@ -11,14 +11,16 @@ Scope is a **deep MVP**: fewer modules, each finished to the definition of done
 | 4. Workflow | interviews (timezone-aware) + calendar, follow-ups with overdue/today/upcoming, documents with content sniffing and private download, settings, account deletion, EN/FR | ✅ done |
 | 5. Quality & delivery | 37 unit/integration tests, 9 E2E incl. axe, CI with migration drift check, Dockerfile + compose, deployment docs | ✅ done locally · ⚠️ Docker images and the VPS deploy are not verified yet |
 
+| 6. Automation | Telegram bot (linking, capture by link, buttons, digests, reminders), job discovery via La Bonne Alternance, scheduled jobs | ✅ done locally · ⚙️ needs bot token + LBA key on the server |
+
 ## Deferred (not in MVP)
 
 | Module from the brief | Why deferred | Prerequisite |
 |---|---|---|
 | Recruiter CRM (contacts, interactions) | Companies exist; contacts are a separate entity with its own UI | — |
 | Analytics area with date ranges + CSV export | Dashboard covers the core metrics | — |
-| Notification center | Needs a scheduler; dashboard and follow-ups show what's due | background job (pg-boss or cron) |
+| In-app notification center | Telegram covers push; an in-app inbox is still missing | — |
 | AI matching / cover letters / interview prep | Must not be faked; needs consent flow for CVs (RGPD) and a provider key | provider abstraction + key + consent |
-| Job discovery / URL import | Must use official APIs, never scraping | La Bonne Alternance / France Travail API access |
+| France Travail as a second discovery source | Needs OAuth client credentials | France Travail API access |
 | Saved filters, bulk updates, tags | Nice-to-have on top of the list view | — |
 | OAuth providers, 2FA | better-auth plugins | provider credentials |
