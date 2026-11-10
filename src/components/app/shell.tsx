@@ -15,6 +15,7 @@ export async function AppShell({ children }: { children: ReactNode }) {
   const dict = getDictionary(user.locale);
   const nav = {
     dashboard: dict.nav.dashboard,
+    discover: dict.nav.discover,
     applications: dict.nav.applications,
     board: dict.nav.board,
     interviews: dict.nav.interviews,

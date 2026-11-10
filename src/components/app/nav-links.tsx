@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, CheckSquare, FileText, KanbanSquare, LayoutDashboard, List, Settings } from "lucide-react";
+import { CalendarDays, CheckSquare, FileText, KanbanSquare, LayoutDashboard, List, Radar, Settings } from "lucide-react";
 import { cn } from "@/components/ui";
 
-type Labels = Record<"dashboard" | "applications" | "board" | "interviews" | "followUps" | "documents" | "settings", string>;
+type Labels = Record<"dashboard" | "discover" | "applications" | "board" | "interviews" | "followUps" | "documents" | "settings", string>;
 
 const ITEMS = [
   { href: "/app", key: "dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/app/discover", key: "discover", icon: Radar, exact: false },
   { href: "/app/applications", key: "applications", icon: List, exact: false, not: "/app/applications/board" },
   { href: "/app/applications/board", key: "board", icon: KanbanSquare, exact: true },
   { href: "/app/interviews", key: "interviews", icon: CalendarDays, exact: false },

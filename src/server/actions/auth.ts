@@ -10,6 +10,7 @@ import type { ActionState } from "@/server/errors";
 import { errorFields, log } from "@/server/logger";
 import { consumeRateLimit, purgeExpiredDemos } from "@/server/services/account";
 import { demoCredentials, markAsDemo, seedDemoData } from "@/server/services/demo";
+import { seedSampleOffers } from "@/server/services/discovery";
 import { invalid, parse } from "./_helpers";
 
 const signInSchema = z.object({
@@ -88,6 +89,7 @@ export async function startDemoAction(): Promise<ActionState> {
     });
     await markAsDemo(res.user.id);
     await seedDemoData(res.user.id);
+    await seedSampleOffers(res.user.id);
     await auth.api.signInEmail({ body: creds, headers: h });
     log.info("demo.started", { userId: res.user.id });
   } catch (err) {
