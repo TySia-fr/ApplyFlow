@@ -89,7 +89,11 @@ fi
 echo "── Backups"
 sudo install -m 755 backup.sh /usr/local/bin/applyflow-backup.sh
 line="41 3 * * * APP_DIR=$DIR /usr/local/bin/applyflow-backup.sh >> /var/log/applyflow-backup.log 2>&1"
-( sudo crontab -l 2>/dev/null | grep -v applyflow-backup.sh; echo "$line" ) | sudo crontab -
+# `crontab -l` exits 1 when root has no crontab yet, and grep -v exits 1 when
+# nothing is left: both are normal here, so neither may abort the script.
+existing=$(sudo crontab -l 2>/dev/null || true)
+kept=$(grep -v applyflow-backup.sh <<<"$existing" || true)
+printf '%s\n' "$kept" "$line" | sed '/^$/d' | sudo crontab -
 ok "nightly backup at 03:41, 14 days kept"
 
 echo "── Check"
