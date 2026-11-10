@@ -59,6 +59,9 @@ importers:
       tailwind-merge:
         specifier: ^3.7.0
         version: 3.7.0
+      undici:
+        specifier: ^8.12.4
+        version: 8.12.4
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -3934,8 +3937,8 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
-  undici@8.12.3:
-    resolution: {integrity: sha512-+fdndUTwBP86cVjihTp21hZHo7d6oj1c/47XPA3lL8mM0XHs+C4EkcjmgRsFnFk2f/UONGDy9ItBItmXsLOQHw==}
+  undici@8.12.4:
+    resolution: {integrity: sha512-8Mx+uNKKER2bA4AdtedkqRbwUCIJFr2nJckXRe5yrDqzePqwLP7VNcctN8/XdmDSbF7mS+jJKIszlL+vbam1VA==}
     engines: {node: '>=22.19.0'}
 
   unrs-resolver@1.13.0:
@@ -7039,7 +7042,7 @@ snapshots:
       parse5: 8.1.0
       saxes: 6.0.0
       tough-cookie: 6.0.2
-      undici: 8.12.3
+      undici: 8.12.4
       w3c-xmlserializer: 6.0.0
       webidl-conversions: 8.0.1
       whatwg-mimetype: 5.0.0
@@ -7926,7 +7929,7 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  undici@8.12.3: {}
+  undici@8.12.4: {}
 
   unrs-resolver@1.13.0:
     dependencies:

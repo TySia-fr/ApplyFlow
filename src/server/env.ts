@@ -22,6 +22,15 @@ const schema = z
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     // Demo sandboxes per IP per hour.
     DEMO_RATE_LIMIT_PER_HOUR: z.coerce.number().int().min(1).max(10_000).default(5),
+    // Job discovery (La Bonne Alternance). Without a key, Discover says so.
+    LBA_API_KEY: z.string().min(1).optional(),
+    LBA_API_BASE_URL: z.url().default("https://api.apprentissage.beta.gouv.fr/api"),
+    // Telegram bot. All three or none.
+    TELEGRAM_BOT_TOKEN: z.string().regex(/^\d+:[\w-]{30,}$/, "invalid bot token format").optional(),
+    TELEGRAM_BOT_USERNAME: z.string().regex(/^\w{5,32}$/).optional(),
+    TELEGRAM_WEBHOOK_SECRET: z.string().regex(/^[\w-]{32,256}$/, "32+ chars of A-Z a-z 0-9 _ -").optional(),
+    // Shared secret for the scheduled-job endpoints (/api/cron/*).
+    CRON_SECRET: z.string().min(32).optional(),
     RESEND_API_KEY: z.string().optional(),
     EMAIL_FROM: z.string().optional(),
   })
@@ -30,6 +39,10 @@ const schema = z
       e.STORAGE_DRIVER !== "s3" ||
       Boolean(e.S3_ENDPOINT && e.S3_REGION && e.S3_BUCKET && e.S3_ACCESS_KEY_ID && e.S3_SECRET_ACCESS_KEY),
     { message: "All S3_* variables are required when STORAGE_DRIVER=s3", path: ["STORAGE_DRIVER"] },
+  )
+  .refine(
+    (e) => [e.TELEGRAM_BOT_TOKEN, e.TELEGRAM_BOT_USERNAME, e.TELEGRAM_WEBHOOK_SECRET].filter(Boolean).length % 3 === 0,
+    { message: "Set TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME and TELEGRAM_WEBHOOK_SECRET together", path: ["TELEGRAM_BOT_TOKEN"] },
   )
   .refine((e) => !e.RESEND_API_KEY || e.EMAIL_FROM, {
     message: "EMAIL_FROM is required when RESEND_API_KEY is set",
@@ -49,3 +62,5 @@ export const env = parsed.data;
 
 /** Email is optional. Features that need it must check this, not assume. */
 export const emailEnabled = Boolean(env.RESEND_API_KEY);
+export const discoveryEnabled = Boolean(env.LBA_API_KEY);
+export const telegramEnabled = Boolean(env.TELEGRAM_BOT_TOKEN);

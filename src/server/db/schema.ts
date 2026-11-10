@@ -8,6 +8,7 @@ import {
   integer,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -347,4 +348,121 @@ export const followUp = pgTable(
       .on(t.userId, t.dueAt)
       .where(sql`${t.completedAt} IS NULL`),
   ],
+);
+
+// ─── Job discovery ──────────────────────────────────────────────────────────
+
+export const offerState = pgEnum("offer_state", ["new", "added", "dismissed"]);
+
+/** A saved La Bonne Alternance query, run daily and on demand. */
+export const savedSearch = pgTable(
+  "saved_search",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    romeCodes: text("rome_codes").array().notNull(),
+    departements: text("departements").array().notNull(),
+    diplomaLevel: integer("diploma_level").notNull(),
+    notifyTelegram: boolean("notify_telegram").notNull().default(true),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    ...timestamps,
+  },
+  (t) => [
+    unique("saved_search_user_id_uq").on(t.userId, t.id),
+    index("saved_search_user_idx").on(t.userId),
+    check("saved_search_level_ck", sql`${t.diplomaLevel} BETWEEN 3 AND 7`),
+    check("saved_search_romes_ck", sql`cardinality(${t.romeCodes}) BETWEEN 1 AND 10`),
+    check("saved_search_deps_ck", sql`cardinality(${t.departements}) BETWEEN 1 AND 10`),
+  ],
+);
+
+/**
+ * An offer found for a user. Deduplicated per user by (source, external_id):
+ * the same offer seen by two saved searches, or on two days, is one row.
+ */
+export const jobOffer = pgTable(
+  "job_offer",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    savedSearchId: uuid("saved_search_id"),
+    // "lba" for La Bonne Alternance; "sample" for clearly-labelled demo data.
+    source: text("source").notNull(),
+    externalId: text("external_id").notNull(),
+    title: text("title").notNull(),
+    company: text("company"),
+    location: text("location"),
+    url: text("url"),
+    contractTypes: text("contract_types"),
+    workMode: workMode("work_mode"),
+    description: text("description"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    state: offerState("state").notNull().default("new"),
+    applicationId: uuid("application_id"),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    unique("job_offer_user_id_uq").on(t.userId, t.id),
+    unique("job_offer_dedupe_uq").on(t.userId, t.source, t.externalId),
+    foreignKey({
+      name: "job_offer_search_owner_fk",
+      columns: [t.userId, t.savedSearchId],
+      foreignColumns: [savedSearch.userId, savedSearch.id],
+    }).onDelete("set null"),
+    foreignKey({
+      name: "job_offer_application_owner_fk",
+      columns: [t.userId, t.applicationId],
+      foreignColumns: [application.userId, application.id],
+    }).onDelete("set null"),
+    index("job_offer_user_state_idx").on(t.userId, t.state, t.createdAt),
+  ],
+);
+
+// ─── Telegram ───────────────────────────────────────────────────────────────
+
+/** One Telegram chat per user and one user per chat. */
+export const telegramLink = pgTable("telegram_link", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  chatId: bigint("chat_id", { mode: "number" }).notNull().unique(),
+  username: text("username"),
+  // A link the bot couldn't read, waiting for "Title @ Company".
+  pendingUrl: text("pending_url"),
+  pendingAt: timestamp("pending_at", { withTimezone: true }),
+  ...timestamps,
+});
+
+/** One-time account-linking tokens. Only a SHA-256 hash is stored. */
+export const telegramLinkToken = pgTable(
+  "telegram_link_token",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("telegram_link_token_user_idx").on(t.userId)],
+);
+
+/** Every scheduled message sent, so a reminder is never sent twice. */
+export const sentNotification = pgTable(
+  "sent_notification",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.key] })],
 );
