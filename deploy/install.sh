@@ -27,7 +27,9 @@ want=$(dig +short "$APEX" | tail -1); got=$(dig +short "$DOMAIN" | tail -1)
 [ "$got" = "$want" ] || die "DNS: $DOMAIN → $got, but this server ($APEX) is $want"
 ok "DNS $DOMAIN → $got"
 
-if sudo ss -ltn "sport = :$PORT" | grep -q LISTEN && ! sudo docker ps --format '{{.Names}}' | grep -q '^applyflow-app'; then
+# Outputs captured first: `cmd | grep -q` can fail under pipefail when grep exits early.
+listeners=$(sudo ss -ltnH "sport = :$PORT"); containers=$(sudo docker ps --format '{{.Names}}')
+if [ -n "$listeners" ] && [[ "$containers" != *applyflow-app* ]]; then
   die "port $PORT is already used by something else; re-run with APP_PORT=<free port>"
 fi
 ok "port $PORT available"
