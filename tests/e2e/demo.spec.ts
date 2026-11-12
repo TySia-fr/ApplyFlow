@@ -3,7 +3,7 @@ import { expectAccessible } from "./helpers";
 
 test("landing pages render in both languages and pass accessibility checks", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("pipeline");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Stop losing track");
   await expectAccessible(page);
   await page.getByRole("link", { name: "fr", exact: true }).click();
   await expect(page).toHaveURL(/\/fr$/);

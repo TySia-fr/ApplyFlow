@@ -1,5 +1,14 @@
 # Project progress
 
+## 2026-11-12 — Landing redesign, LBA links in the bot
+
+- Landing rewritten in the maker's voice: serif display type (self-hosted
+  Instrument Serif), warm paper/ink palette with a green accent, "A week with
+  ApplyFlow", and "Notes from building it" (real bugs found by tests)
+- Bot: La Bonne Alternance company pages ask only for the job title; job
+  offer links are read from the LBA API instead of the page (migration 0004)
+- Results: Vitest 77/77, Playwright 12/12 (axe included)
+
 ## 2026-11-10 — Telegram bot and job discovery
 
 - Discover page: saved searches on La Bonne Alternance, offers deduplicated

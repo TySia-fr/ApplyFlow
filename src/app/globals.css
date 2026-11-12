@@ -3,20 +3,20 @@
 /*
  * Design tokens. Components use semantic names (bg, surface, fg, muted,
  * border, accent), never raw palette colors, so light/dark is one switch here.
- * Contrast: fg/bg ≥ 15:1, muted/bg ≥ 4.6:1 in both themes (WCAG AA for text).
+ * Warm paper/ink palette, green accent. Contrast: fg/bg ≥ 15:1, muted/bg ≥ 5.5:1 in both themes (WCAG AA for text).
  */
 :root {
   color-scheme: light;
-  --bg: #fbfbfa;
-  --surface: #ffffff;
-  --surface-2: #f4f4f2;
-  --border: #e6e6e3;
-  --border-strong: #d4d4d0;
-  --fg: #18181a;
-  --muted: #62626a;
-  --accent: #4f46e5;
+  --bg: #f6f4ef;
+  --surface: #fffdf9;
+  --surface-2: #efece5;
+  --border: #e3dfd5;
+  --border-strong: #d2cdc1;
+  --fg: #1b1a17;
+  --muted: #5d5950;
+  --accent: #1f6b52;
   --accent-fg: #ffffff;
-  --accent-soft: #eef0ff;
+  --accent-soft: #e2eee8;
   --danger: #c2261d;
   --danger-soft: #fdeceb;
   --success: #15803d;
@@ -27,22 +27,22 @@
   --info-soft: #e9f1fc;
   --violet: #6d3fd1;
   --violet-soft: #f2edfd;
-  --ring: #4f46e5;
+  --ring: #1f6b52;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --bg: #0c0c0e;
-    --surface: #131316;
-    --surface-2: #1b1b1f;
-    --border: #26262b;
-    --border-strong: #34343b;
-    --fg: #ececee;
-    --muted: #9a9aa4;
-    --accent: #8b84ff;
-    --accent-fg: #0c0c0e;
-    --accent-soft: #1e1c38;
+    --bg: #11100e;
+    --surface: #191815;
+    --surface-2: #22201c;
+    --border: #2d2b26;
+    --border-strong: #3a3732;
+    --fg: #ecebe6;
+    --muted: #a3a095;
+    --accent: #72c9a5;
+    --accent-fg: #0e1914;
+    --accent-soft: #1a2a23;
     --danger: #ff7b72;
     --danger-soft: #2d1513;
     --success: #4ccf7f;
@@ -53,7 +53,7 @@
     --info-soft: #0f1d33;
     --violet: #b79bff;
     --violet-soft: #221a3a;
-    --ring: #8b84ff;
+    --ring: #72c9a5;
   }
 }
 
@@ -81,6 +81,7 @@
   --color-ring: var(--ring);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-instrument), Georgia, serif;
   /* Radius scale: small and consistent, no pill-shaped cards. */
   --radius-sm: 4px;
   --radius-md: 6px;
