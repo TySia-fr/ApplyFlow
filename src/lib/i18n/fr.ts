@@ -374,6 +374,7 @@ export const fr = {
     unlinked: "Déconnecté. Vos données dans ApplyFlow sont inchangées.",
     added: "Ajoutée à votre pipeline : <b>{title}</b> · {company}",
     askDetails: "Je n'ai pas pu lire les détails de l'offre sur cette page (beaucoup de sites bloquent les robots). Répondez avec :\n<code>Intitulé du poste @ Entreprise</code>",
+    lbaCompanyPage: "Cette page La bonne alternance est celle de <b>{company}</b> : une entreprise qui recrute en alternance (candidature spontanée), pas une offre précise.\nRépondez avec l'intitulé du poste visé, par exemple <code>Développeur web</code>.\n(Mauvaise entreprise ? Répondez <code>Intitulé du poste @ Entreprise</code>.)",
     pendingSaved: "Ajoutée : <b>{title}</b> · {company}",
     unsafeLink: "Je ne peux pas ouvrir ce lien.",
     tooMany: "Beaucoup de liens en peu de temps. Réessayez un peu plus tard.",

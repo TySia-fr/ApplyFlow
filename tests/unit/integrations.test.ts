@@ -119,3 +119,58 @@ describe("saved search input", () => {
     expect(savedSearchInput.safeParse({ name: "Dev", families: ["x"], departements: "34", diplomaLevel: "6" }).success).toBe(false);
   });
 });
+
+import { companyFromSlug, parseLbaUrl } from "@/server/integrations/lba-links";
+
+describe("La Bonne Alternance links", () => {
+  it("recognizes a company page (the real link from production)", () => {
+    expect(parseLbaUrl("https://labonnealternance.apprentissage.beta.gouv.fr/emploi/recruteurs_lba/78874347400017/lumapps")).toEqual({
+      kind: "recruiter",
+      siret: "78874347400017",
+      company: "Lumapps",
+    });
+    expect(companyFromSlug("groupe-nicollin")).toBe("Groupe Nicollin");
+    expect(companyFromSlug("%C3%A9cole-sup")).toBe("École Sup");
+  });
+  it("recognizes job offers by id", () => {
+    expect(parseLbaUrl("https://labonnealternance.apprentissage.beta.gouv.fr/emploi/offres_emploi_lba/6735a1b2c3d4e5f6a7b8c9d0/dev")).toEqual({ kind: "offer", id: "6735a1b2c3d4e5f6a7b8c9d0" });
+    expect(parseLbaUrl("https://labonnealternance.apprentissage.beta.gouv.fr/emploi/6735a1b2c3d4e5f6a7b8c9d0")).toEqual({ kind: "offer", id: "6735a1b2c3d4e5f6a7b8c9d0" });
+  });
+  it("ignores other hosts, plain http, and malformed paths", () => {
+    expect(parseLbaUrl("https://evil.example/emploi/recruteurs_lba/78874347400017/x")).toBeNull();
+    expect(parseLbaUrl("http://labonnealternance.apprentissage.beta.gouv.fr/emploi/x123456")).toBeNull();
+    expect(parseLbaUrl("https://labonnealternance.apprentissage.beta.gouv.fr/emploi/recruteurs_lba/123/x")).toBeNull();
+    expect(parseLbaUrl("https://labonnealternance.apprentissage.beta.gouv.fr/formation/abc123")).toBeNull();
+  });
+});
+
+import { LbaClient } from "@/server/integrations/lba";
+
+describe("LbaClient.getOffer", () => {
+  const job = {
+    identifier: { id: "abc", partner_job_id: "abc", partner_label: "La bonne alternance" },
+    workplace: { name: "Orbital", legal_name: null, brand: null, location: { address: "Montpellier" } },
+    apply: { url: "https://labonnealternance.apprentissage.beta.gouv.fr/emploi/abc" },
+    contract: { type: ["Apprentissage"], remote: null },
+    offer: { title: "Alternant", description: "", publication: { creation: null } },
+  };
+  const client = (status: number, body: unknown, seen?: { url?: string; auth?: string }) =>
+    new LbaClient({
+      baseUrl: "https://api.example/api/",
+      apiKey: "k",
+      fetch: (async (url: string, init: RequestInit) => {
+        if (seen) Object.assign(seen, { url: String(url), auth: (init.headers as Record<string, string>).Authorization });
+        return new Response(JSON.stringify(body), { status });
+      }) as unknown as typeof fetch,
+    });
+  it("calls /job/v1/offer/{id} with the bearer key and maps the result", async () => {
+    const seen: { url?: string; auth?: string } = {};
+    expect(await client(200, job, seen).getOffer("abc")).toMatchObject({ title: "Alternant", company: "Orbital" });
+    expect(seen).toEqual({ url: "https://api.example/api/job/v1/offer/abc", auth: "Bearer k" });
+  });
+  it("returns null for 404/410 and throws for other errors", async () => {
+    expect(await client(404, {}).getOffer("x")).toBeNull();
+    expect(await client(410, {}).getOffer("x")).toBeNull();
+    await expect(client(503, {}).getOffer("x")).rejects.toThrow("503");
+  });
+});

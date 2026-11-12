@@ -23,6 +23,8 @@ import { consumeRateLimit } from "@/server/services/account";
 import { encodeCallback, decodeCallback, esc, TelegramError, type Keyboard, type Telegram, type Update } from "@/server/integrations/telegram";
 import { extractJobPosting, firstUrl, parseTitleCompany } from "@/server/integrations/job-page";
 import { UnsafeUrlError, type FetchHtml } from "@/server/integrations/safe-fetch";
+import type { DiscoveredOffer, OfferLookup } from "@/server/integrations/lba";
+import { parseLbaUrl } from "@/server/integrations/lba-links";
 import { getDictionary, t, type Dictionary } from "@/lib/i18n";
 import { dateKeyInZone, formatDateTime } from "@/lib/time";
 import { applicationInput } from "@/lib/validation";
@@ -59,7 +61,7 @@ export async function linkChat(userId: string, chatId: number, username: string 
     await tx
       .insert(telegramLink)
       .values({ userId, chatId, username: username ?? null })
-      .onConflictDoUpdate({ target: telegramLink.userId, set: { chatId, username: username ?? null, pendingUrl: null, pendingAt: null } });
+      .onConflictDoUpdate({ target: telegramLink.userId, set: { chatId, username: username ?? null, pendingUrl: null, pendingCompany: null, pendingAt: null } });
   });
 }
 
@@ -74,7 +76,7 @@ export async function getLink(userId: string, db: Db = defaultDb) {
 
 async function linkedUser(chatId: number, db: Db) {
   const [row] = await db
-    .select({ userId: user.id, name: user.name, locale: user.locale, timezone: user.timezone, pendingUrl: telegramLink.pendingUrl })
+    .select({ userId: user.id, name: user.name, locale: user.locale, timezone: user.timezone, pendingUrl: telegramLink.pendingUrl, pendingCompany: telegramLink.pendingCompany })
     .from(telegramLink)
     .innerJoin(user, eq(user.id, telegramLink.userId))
     .where(eq(telegramLink.chatId, chatId))
@@ -84,7 +86,8 @@ async function linkedUser(chatId: number, db: Db) {
 
 // ─── Incoming updates ───────────────────────────────────────────────────────
 
-export type BotDeps = { tg: Telegram; fetchHtml: FetchHtml; db?: Db };
+/** `offers` is null when La Bonne Alternance isn't configured: links then fall back to asking. */
+export type BotDeps = { tg: Telegram; fetchHtml: FetchHtml; offers?: OfferLookup | null; db?: Db };
 
 const appUrl = (path: string) => `${env.APP_URL.replace(/\/$/, "")}${path}`;
 /** Telegram rejects URL buttons pointing at http://localhost; only offer them for real hosts. */
@@ -97,9 +100,36 @@ function appKeyboard(d: Dictionary, appId: string, withApplied: boolean): Keyboa
   return row.length ? [row] : [];
 }
 
-async function createFromLink(userId: string, url: string, title: string, companyName: string, location: string | null, db: Db) {
-  const input = applicationInput.parse({ title, companyName, jobUrl: url, location: location ?? "", source: "Telegram", status: "saved" });
+type LinkJob = {
+  title: string;
+  company: string;
+  location?: string | null;
+  source?: string;
+  apprenticeship?: boolean;
+  workMode?: DiscoveredOffer["workMode"];
+  description?: string | null;
+};
+
+async function createFromLink(userId: string, url: string, job: LinkJob, db: Db) {
+  const input = applicationInput.parse({
+    title: job.title,
+    companyName: job.company,
+    jobUrl: url,
+    location: job.location ?? "",
+    source: job.source ?? "Telegram",
+    employmentType: job.apprenticeship ? "apprenticeship" : "",
+    workMode: job.workMode ?? "",
+    description: job.description ?? "",
+    status: "saved",
+  });
   return createApplication(userId, input, db);
+}
+
+async function setPending(db: Db, userId: string, url: string | null, company: string | null) {
+  await db
+    .update(telegramLink)
+    .set({ pendingUrl: url, pendingCompany: company, pendingAt: url ? new Date() : null })
+    .where(eq(telegramLink.userId, userId));
 }
 
 export async function handleUpdate(update: Update, deps: BotDeps): Promise<void> {
@@ -137,6 +167,34 @@ export async function handleUpdate(update: Update, deps: BotDeps): Promise<void>
   const url = firstUrl(text);
   if (url) {
     if (!(await consumeRateLimit(`tg-links:${chatId}`, 20, 3600, db))) return say(d.bot.tooMany);
+
+    // La Bonne Alternance renders pages with JavaScript: use its API instead.
+    const lba = parseLbaUrl(url);
+    if (lba?.kind === "recruiter") {
+      await setPending(db, me.userId, url, lba.company);
+      return say(lba.company ? t(d.bot.lbaCompanyPage, { company: esc(lba.company) }) : d.bot.askDetails);
+    }
+    if (lba?.kind === "offer" && deps.offers) {
+      try {
+        const o = await deps.offers.getOffer(lba.id);
+        if (o) {
+          const company = o.company ?? "Unspecified company";
+          const appId = await createFromLink(
+            me.userId,
+            url,
+            { title: o.title, company, location: o.location, source: "La Bonne Alternance", apprenticeship: true, workMode: o.workMode, description: o.description },
+            db,
+          );
+          await setPending(db, me.userId, null, null);
+          return say(t(d.bot.added, { title: esc(o.title), company: esc(company) }), appKeyboard(d, appId, true));
+        }
+      } catch (err) {
+        log.warn("telegram.lba_lookup_failed", { userId: me.userId, ...errorFields(err) });
+      }
+      await setPending(db, me.userId, url, null);
+      return say(d.bot.askDetails);
+    }
+
     let job = null;
     try {
       const page = await deps.fetchHtml(url);
@@ -149,18 +207,29 @@ export async function handleUpdate(update: Update, deps: BotDeps): Promise<void>
       log.info("telegram.page_unreadable", { userId: me.userId, ...errorFields(err) });
     }
     if (job) {
-      const appId = await createFromLink(me.userId, url, job.title, job.company ?? "Unspecified company", job.location, db);
+      const company = job.company ?? "Unspecified company";
+      const appId = await createFromLink(me.userId, url, { title: job.title, company, location: job.location }, db);
+      await setPending(db, me.userId, null, null);
       return say(t(d.bot.added, { title: esc(job.title), company: esc(job.company ?? "—") }), appKeyboard(d, appId, true));
     }
-    await db.update(telegramLink).set({ pendingUrl: url, pendingAt: new Date() }).where(eq(telegramLink.userId, me.userId));
+    await setPending(db, me.userId, url, null);
     return say(d.bot.askDetails);
   }
 
   if (me.pendingUrl) {
-    const tc = parseTitleCompany(text);
+    const fromLba = parseLbaUrl(me.pendingUrl) !== null;
+    // "Title @ Company" always wins; a bare title is enough when the company came from the link.
+    const tc =
+      parseTitleCompany(text) ??
+      (me.pendingCompany && !text.startsWith("/") && text.length >= 2 && text.length <= 200 ? { title: text, company: me.pendingCompany } : null);
     if (tc) {
-      const appId = await createFromLink(me.userId, me.pendingUrl, tc.title, tc.company, null, db);
-      await db.update(telegramLink).set({ pendingUrl: null, pendingAt: null }).where(eq(telegramLink.userId, me.userId));
+      const appId = await createFromLink(
+        me.userId,
+        me.pendingUrl,
+        { title: tc.title, company: tc.company, source: fromLba ? "La Bonne Alternance" : "Telegram", apprenticeship: fromLba },
+        db,
+      );
+      await setPending(db, me.userId, null, null);
       return say(t(d.bot.pendingSaved, { title: esc(tc.title), company: esc(tc.company) }), appKeyboard(d, appId, true));
     }
   }

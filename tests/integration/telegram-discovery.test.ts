@@ -177,6 +177,60 @@ describe("adding jobs by link", () => {
   });
 });
 
+describe("La Bonne Alternance links", () => {
+  const COMPANY = "https://labonnealternance.apprentissage.beta.gouv.fr/emploi/recruteurs_lba/78874347400017/lumapps";
+  const OFFER = "https://labonnealternance.apprentissage.beta.gouv.fr/emploi/offres_emploi_lba/6735a1b2c3d4e5f6a7b8c9d0/dev";
+  const failFetch: FetchHtml = async () => {
+    throw new Error("the page must not be scraped for LBA links");
+  };
+
+  it("company page: asks only for the title, uses the company from the link", async () => {
+    const tg = new FakeTelegram();
+    const { userId, chatId } = await linkedUser(tg);
+    await bot.handleUpdate(msg(chatId, COMPANY), { tg, fetchHtml: failFetch, offers: null });
+    expect(tg.last()).toContain("<b>Lumapps</b>");
+    await bot.handleUpdate(msg(chatId, "Développeur web"), { tg, fetchHtml: failFetch });
+    const { rows } = await apps.listApplications(userId, { archived: false, sort: "updated", page: 1 });
+    expect(rows[0]).toMatchObject({ title: "Développeur web", companyName: "Lumapps", status: "saved" });
+    const a = await apps.getApplication(userId, rows[0]!.id);
+    expect(a.app).toMatchObject({ source: "La Bonne Alternance", employmentType: "apprenticeship", jobUrl: COMPANY });
+    expect((await bot.getLink(userId))?.pendingCompany).toBeNull();
+  });
+
+  it("company page: 'Title @ Company' corrects the company", async () => {
+    const tg = new FakeTelegram();
+    const { userId, chatId } = await linkedUser(tg);
+    await bot.handleUpdate(msg(chatId, COMPANY), { tg, fetchHtml: failFetch });
+    await bot.handleUpdate(msg(chatId, "Dev full-stack @ LumApps SAS"), { tg, fetchHtml: failFetch });
+    const { rows } = await apps.listApplications(userId, { archived: false, sort: "updated", page: 1 });
+    expect(rows[0]).toMatchObject({ title: "Dev full-stack", companyName: "LumApps SAS" });
+  });
+
+  it("job offer: details come from the API, page is not scraped", async () => {
+    const tg = new FakeTelegram();
+    const { userId, chatId } = await linkedUser(tg);
+    const asked: string[] = [];
+    const offers = { getOffer: async (id: string) => (asked.push(id), offer("lba1", { title: "Alternant DevOps", company: "Orbital Rail", location: "34000 Montpellier", workMode: "hybrid" as const })) };
+    await bot.handleUpdate(msg(chatId, OFFER), { tg, fetchHtml: failFetch, offers });
+    expect(asked).toEqual(["6735a1b2c3d4e5f6a7b8c9d0"]);
+    expect(tg.last()).toContain("Alternant DevOps");
+    const { rows } = await apps.listApplications(userId, { archived: false, sort: "updated", page: 1 });
+    const a = await apps.getApplication(userId, rows[0]!.id);
+    expect(a.app).toMatchObject({ title: "Alternant DevOps", location: "34000 Montpellier", workMode: "hybrid", employmentType: "apprenticeship", source: "La Bonne Alternance" });
+    expect(a.companyName).toBe("Orbital Rail");
+  });
+
+  it("job offer: removed offer or API error falls back to asking, nothing invented", async () => {
+    const tg = new FakeTelegram();
+    const { userId, chatId } = await linkedUser(tg);
+    await bot.handleUpdate(msg(chatId, OFFER), { tg, fetchHtml: failFetch, offers: { getOffer: async () => null } });
+    expect(tg.last()).toContain("Job title @ Company");
+    await bot.handleUpdate(msg(chatId, OFFER), { tg, fetchHtml: failFetch, offers: { getOffer: async () => Promise.reject(new Error("503")) } });
+    expect(tg.last()).toContain("Job title @ Company");
+    expect((await apps.listApplications(userId, { archived: false, sort: "updated", page: 1 })).total).toBe(0);
+  });
+});
+
 describe("authorization through the bot", () => {
   it("a button carrying another user's id does nothing and reveals nothing", async () => {
     const tg = new FakeTelegram();

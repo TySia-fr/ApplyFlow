@@ -29,6 +29,13 @@
       "when": 1794331545543,
       "tag": "0003_discovery_telegram",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794523299222,
+      "tag": "0004_telegram_pending_company",
+      "breakpoints": true
     }
   ]
 }

@@ -54,6 +54,11 @@ export interface JobSource {
   search(q: LbaQuery): Promise<{ offers: DiscoveredOffer[]; invalid: number }>;
 }
 
+/** Single offer by id; null when it doesn't exist or has been removed. */
+export interface OfferLookup {
+  getOffer(id: string): Promise<DiscoveredOffer | null>;
+}
+
 export class LbaError extends Error {
   constructor(
     message: string,
@@ -92,10 +97,21 @@ export function toOffer(raw: unknown): DiscoveredOffer | null {
   };
 }
 
-export class LbaClient implements JobSource {
+export class LbaClient implements JobSource, OfferLookup {
   constructor(
     private readonly opts: { baseUrl: string; apiKey: string; fetch?: typeof fetch },
   ) {}
+
+  async getOffer(id: string): Promise<DiscoveredOffer | null> {
+    const url = `${this.opts.baseUrl.replace(/\/$/, "")}/job/v1/offer/${encodeURIComponent(id)}`;
+    const res = await (this.opts.fetch ?? fetch)(url, {
+      headers: { Authorization: `Bearer ${this.opts.apiKey}`, Accept: "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (res.status === 404 || res.status === 410) return null;
+    if (!res.ok) throw new LbaError(`La Bonne Alternance returned ${res.status}`, res.status);
+    return toOffer(await res.json());
+  }
 
   async search(q: LbaQuery) {
     const url = new URL(`${this.opts.baseUrl.replace(/\/$/, "")}/job/v1/search`);

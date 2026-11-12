@@ -436,6 +436,8 @@ export const telegramLink = pgTable("telegram_link", {
   username: text("username"),
   // A link the bot couldn't read, waiting for "Title @ Company".
   pendingUrl: text("pending_url"),
+  // Company already known from the link (LBA company pages): only the title is asked.
+  pendingCompany: text("pending_company"),
   pendingAt: timestamp("pending_at", { withTimezone: true }),
   ...timestamps,
 });

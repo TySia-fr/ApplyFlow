@@ -372,6 +372,7 @@ export const en = {
     unlinked: "Disconnected. Your data in ApplyFlow is unchanged.",
     added: "Added to your pipeline: <b>{title}</b> · {company}",
     askDetails: "I couldn't read the job details from that page (many sites block bots). Reply with:\n<code>Job title @ Company</code>",
+    lbaCompanyPage: "This is <b>{company}</b>'s La Bonne Alternance page: a company that hires apprentices (spontaneous application), not a specific job offer.\nReply with the job title you're targeting, e.g. <code>Développeur web</code>.\n(Wrong company? Reply <code>Job title @ Company</code>.)",
     pendingSaved: "Added: <b>{title}</b> · {company}",
     unsafeLink: "I can't open that link.",
     tooMany: "That's a lot of links in a short time. Try again in a while.",

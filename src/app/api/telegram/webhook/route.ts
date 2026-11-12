@@ -1,6 +1,6 @@
 import { env } from "@/server/env";
 import { errorFields, log } from "@/server/logger";
-import { secretMatches, telegram } from "@/server/integrations/wiring";
+import { jobSource, secretMatches, telegram } from "@/server/integrations/wiring";
 import { updateSchema } from "@/server/integrations/telegram";
 import { fetchHtmlSafely } from "@/server/integrations/safe-fetch";
 import { handleUpdate } from "@/server/services/telegram";
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   const parsed = updateSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return new Response("ok"); // unknown update types are fine to ignore
   try {
-    await handleUpdate(parsed.data, { tg, fetchHtml: fetchHtmlSafely });
+    await handleUpdate(parsed.data, { tg, fetchHtml: fetchHtmlSafely, offers: jobSource() });
   } catch (err) {
     // Always 200: a non-2xx makes Telegram redeliver the same update in a loop.
     log.error("telegram.update_failed", { updateId: parsed.data.update_id, ...errorFields(err) });
