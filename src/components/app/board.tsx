@@ -57,7 +57,11 @@ export function Board({ initial, dict }: { initial: Card[]; dict: Dictionary }) 
   const [error, setError] = useState(false);
   // Closed columns are collapsed by default; the choice is remembered per browser.
   const [showClosed, setShowClosed] = useState(false);
+  // True once hydrated: before that, pointer events can't start a drag.
+  const [ready, setReady] = useState(false);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReady(true);
     try {
       // Reading browser storage after mount is the point here; there's no external store to subscribe to.
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -136,7 +140,7 @@ export function Board({ initial, dict }: { initial: Card[]; dict: Dictionary }) 
         // Default 20% edge zone scrolls too eagerly on wide boards; 10% feels deliberate.
         autoScroll={{ threshold: { x: 0.1, y: 0.1 } }}
       >
-        <div data-wide className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-4 md:-mx-8 md:px-8">
+        <div data-wide data-board-ready={ready ? "true" : undefined} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-4 md:-mx-8 md:px-8">
           {STATUSES.map((s) => (
             <Column
               key={s}

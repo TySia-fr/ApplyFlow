@@ -41,6 +41,8 @@ test("board: dragging a card persists the move and records it in the timeline", 
   await expect(page).toHaveURL(/\/app$/);
   await page.goto("/app/applications/board");
 
+  // Wait for hydration: a drag started before React attaches its handlers does nothing.
+  await page.locator("[data-board-ready=true]").waitFor();
   const card = page.getByRole("region", { name: /^Applied/ }).getByText("Platform Engineer");
   const target = page.getByRole("region", { name: /^Screening/ });
   const from = await card.boundingBox();
@@ -49,6 +51,8 @@ test("board: dragging a card persists the move and records it in the timeline", 
   await page.mouse.move(from.x + 20, from.y + 10);
   await page.mouse.down();
   await page.mouse.move(from.x + 40, from.y + 30, { steps: 5 });
+  // The drag overlay proves the drag actually started before moving to the target.
+  await expect(page.locator(".rotate-1")).toBeVisible();
   await page.mouse.move(to.x + 40, to.y + to.height - 20, { steps: 15 });
   await page.mouse.up();
   await expect(target).toContainText("Platform Engineer");
